@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+#
+# pductl - Control outlets of ATEN PE PDUs (SNMPv3)
+#
+# Copyright (c) 2018 Andreas Oberritter
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+#
+# Example configuration [~/.pductl]:
+#
+# {
+#   "format": 1,
+#   "pdus": {
+#     "pdu1": {
+#       "node": "pdu1",              (default)
+#       "service": "snmp",           (default)
+#       "username": "administrator", (default)
+#       "authkey": "AAAAAAAAAAAAAA", (required)
+#       "privkey": "BBBBBBBBBBBBBB"  (required)
+#     },
+#     "pdu2": {
+#       "authkey": "CCCCCCCCCCCCCC",
+#       "privkey": "DDDDDDDDDDDDDD"
+#     },
+#     "pdu3": {
+#       "node": "192.168.21.19",
+#       "service": "16161",
+#       "username": "joe",
+#       "authkey": "EEEEEEEEEEEEEE",
+#       "privkey": "FFFFFFFFFFFFFF"
+#     }
+#   }
+# }
+#
+#
+# Usage:
+#
+# pductl update
+# pductl [-p <PDU>] list
+# pductl [-p <PDU>] <on|off|reboot|status> <OUTLET> [<OUTLET> ...]
+#
+
+from argparse import ArgumentParser, RawTextHelpFormatter
+from os import environ, path
+from pysnmp.hlapi import *
+from sys import stderr
+import json
+
+
+mib_module = 'ATEN-PE-CFG'
+
+
+def fatal(msg):
+    print("Error: %s" % msg, file=stderr)
+    exit(1)
+
+
+def snmpv3args(name, params):
+    return [
+        SnmpEngine(),
+        UsmUserData(
+            params.get('username', 'administrator'),
+            params.get('authkey'),
+            params.get('privkey'),
+            authProtocol=usmHMACMD5AuthProtocol,
+            privProtocol=usmAesCfb128Protocol,
+        ),
+        UdpTransportTarget((
+            params.get('node', name),
+            params.get('service', 'snmp'),
+        )),
+        ContextData()
+    ]
+
+
+def snmpset(name, params, objects_values):
+    next(setCmd(
+        *snmpv3args(name, params),
+        *[ObjectType(ObjectIdentity(mib_module, obj, 0), value) for obj, value in objects_values.items()]
+    ))
+
+
+def snmpget(name, params, objects):
+    return nextCmd(
+        *snmpv3args(name, params),
+        *[ObjectType(ObjectIdentity(mib_module, obj)) for obj in objects]
+    )
+
+
+def snmpnext(g):
+    errorIndication, errorStatus, errorIndex, varBinds = next(g)
+    if errorIndication:
+        print(errorIndication)
+    elif errorStatus:
+        print('%s at %s' % (errorStatus.prettyPrint(),
+                            errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
+    else:
+        return [binds[1] for binds in varBinds]
+
+    return []
+
+
+def state_path():
+    home = environ.get('HOME', '')
+    return path.join(home, '.pductl')
+
+
+def save_state(state):
+    with open(state_path(), 'w') as f:
+        json.dump(state, f, indent=2)
+
+
+def load_state():
+    try:
+        with open(state_path(), 'r') as f:
+            state = json.load(f)
+            fmt = state.get('format')
+            if fmt is not None and int(fmt) == 1:
+                return state
+    except:
+        pass
+    return {}
+
+
+# Fetch configured names for outlets of all known PDUs and cache
+# them inside the configuration file.
+def update_state(pdus):
+    for pdu, params in pdus.items():
+        outlets = {}
+        outletnumber, = snmpnext(snmpget(pdu, params, ['outletnumber']))
+        gen = snmpget(pdu, params, ['outletName'])
+        for n in range(1, outletnumber + 1): 
+            name, = snmpnext(gen)
+            if name and name[0]:
+                outlets[str(name)] = n
+            else:
+                outlets[str(n)] = n
+        params['outlets'] = outlets
+
+    state = {
+        'format': 1,
+        'pdus': pdus,
+    }
+    save_state(state)
+    return state
+
+
+# Load connection parameters and and cached outlet names from file
+state = load_state()
+pdus = state.get('pdus', {})
+if not pdus:
+    fatal("No PDUs found! Please create or modify '%s' and check for JSON formatting errors." % state_path())
+
+
+# Build command-line parser and help texts
+ap = ArgumentParser()
+
+pdu_names = [*pdus.keys()]
+ap.add_argument('-p', '--pdu', choices=pdu_names, default=pdu_names[0])
+
+sp = ap.add_subparsers(help='commands', dest='cmd')
+
+outlet_cmds = {
+    'status': 'Get current state of outlet(s)',
+    'off': 'Turn off outlet(s)',
+    'on': 'Turn on outlet(s)',
+    'reboot': 'Reboot outlet(s)',
+}
+
+outlets_help = ''
+for k, v in pdus.items():
+    outlets_help += 'Outlets for %s: {' % k + ','.join(v.get('outlets', [])) + '}\n'
+
+for cmd, cmd_help in outlet_cmds.items():
+    p = sp.add_parser(cmd, formatter_class=RawTextHelpFormatter, help=cmd_help)
+    p.add_argument('outlet', nargs='+', help=outlets_help, metavar='OUTLET')
+
+simple_cmds = {
+    'list': 'List known outlets',
+    'update': 'Update state file in %s' % state_path(),
+}
+
+for cmd, help in simple_cmds.items():
+    p = sp.add_parser(cmd, help=help)
+
+args = ap.parse_args()
+
+# Name of selected PDU
+pdu = args.pdu
+
+# Connection parameters for selected PDU
+params = pdus.get(pdu)
+
+# Dictionary of outlets (name -> visible number)
+outlets = params.get('outlets', {})
+outlet_names = [*outlets.keys()]
+
+if args.cmd == 'list':
+    for name, nr in params.get('outlets', {}).items():
+        print("%s: %s" % (nr, name))
+
+elif args.cmd == 'update':
+    update_state(pdus)
+
+elif args.cmd in outlet_cmds.keys():
+    if not args.outlet or 'ALL' in args.outlet:
+        names = outlet_names
+    else:
+        diff = set(args.outlet).difference(set(outlet_names))
+        if diff:
+            fatal("Invalid argument(s): %s" % diff)
+        names = args.outlet
+
+    ids = [outlets[name] for name in names]
+    attrs = ['outlet%dStatus' % nr for nr in ids]
+    states = snmpnext(snmpget(pdu, params, attrs))
+
+    if args.cmd == 'status':
+        for nr, name, state in zip(ids, names, states):
+            if str(nr) == name:
+              print('%s: %s' % (nr, state.getNamedValues().getName(state)))
+            else:
+              print('%s [%s]: %s' % (nr, name, state.getNamedValues().getName(state)))
+    else:
+        values = dict([(attr, state.getNamedValues().getValue(args.cmd)) for attr, state in zip(attrs, states) if state.getNamedValues().getName(state) != args.cmd])
+        if values:
+            snmpset(pdu, params, values)
