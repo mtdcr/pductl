@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# pductl - Control outlets of ATEN PE PDUs (SNMPv3)
+# pductl - Control outlets of ATEN PE PDUs (SNMP v2/v3)
 #
 # Copyright (c) 2018 Andreas Oberritter
 #
@@ -31,9 +31,9 @@
 #     "pdu1": {
 #       "node": "pdu1",              (default)
 #       "service": "snmp",           (default)
-#       "username": "administrator", (default)
-#       "authkey": "AAAAAAAAAAAAAA", (required)
-#       "privkey": "BBBBBBBBBBBBBB"  (required)
+#       "username": "administrator", (default for SNMPv3)
+#       "authkey": "AAAAAAAAAAAAAA", (required for SNMPv3)
+#       "privkey": "BBBBBBBBBBBBBB"  (required for SNMPv3)
 #     },
 #     "pdu2": {
 #       "authkey": "CCCCCCCCCCCCCC",
@@ -45,6 +45,11 @@
 #       "username": "joe",
 #       "authkey": "EEEEEEEEEEEEEE",
 #       "privkey": "FFFFFFFFFFFFFF"
+#     },
+#     "pdu4": {
+#       "community": "private"       (default for SNMPv2)
+#     },
+#     "pdu5": {
 #     }
 #   }
 # }
@@ -52,19 +57,34 @@
 #
 # Usage:
 #
-# pductl update
 # pductl [-p <PDU>] list
 # pductl [-p <PDU>] <on|off|reboot|status> <OUTLET> [<OUTLET> ...]
 #
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 from os import environ, path
-from pysnmp.hlapi import *
 from sys import stderr
 import json
+from atenpdu import AtenPE
 
 
-mib_module = 'ATEN-PE-CFG'
+class PduCtrl(AtenPE):
+    def __init__(self, name, params):
+        node = params.get('node', name)
+        serv = params.get('service', 'snmp')
+        community = params.get('community', 'private')
+        username = params.get('username', 'administrator')
+        authkey = params.get('authkey')
+        privkey = params.get('privkey')
+        AtenPE.__init__(self, node=node, serv=serv, community=community, username=username, authkey=authkey, privkey=privkey)
+
+    def switchOutlets(self, outlets, state):
+        self._set(dict([('outlet%dStatus' % outlet.id, state) for outlet in outlets]), 0)
+
+    def queryOutlets(self, outlets):
+        states = self._iterate(self._next(['outlet%dStatus' % outlet.id for outlet in outlets]))
+        for outlet, state in zip(outlets, states):
+            yield (outlet, state.getNamedValues().getName(state))
 
 
 def fatal(msg):
@@ -72,59 +92,9 @@ def fatal(msg):
     exit(1)
 
 
-def snmpv3args(name, params):
-    return [
-        SnmpEngine(),
-        UsmUserData(
-            params.get('username', 'administrator'),
-            params.get('authkey'),
-            params.get('privkey'),
-            authProtocol=usmHMACMD5AuthProtocol,
-            privProtocol=usmAesCfb128Protocol,
-        ),
-        UdpTransportTarget((
-            params.get('node', name),
-            params.get('service', 'snmp'),
-        )),
-        ContextData()
-    ]
-
-
-def snmpset(name, params, objects_values):
-    next(setCmd(
-        *snmpv3args(name, params),
-        *[ObjectType(ObjectIdentity(mib_module, obj, 0), value) for obj, value in objects_values.items()]
-    ))
-
-
-def snmpget(name, params, objects):
-    return nextCmd(
-        *snmpv3args(name, params),
-        *[ObjectType(ObjectIdentity(mib_module, obj)) for obj in objects]
-    )
-
-
-def snmpnext(g):
-    errorIndication, errorStatus, errorIndex, varBinds = next(g)
-    if errorIndication:
-        print(errorIndication)
-    elif errorStatus:
-        print('%s at %s' % (errorStatus.prettyPrint(),
-                            errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
-    else:
-        return [binds[1] for binds in varBinds]
-
-    return []
-
-
 def state_path():
     home = environ.get('HOME', '')
     return path.join(home, '.pductl')
-
-
-def save_state(state):
-    with open(state_path(), 'w') as f:
-        json.dump(state, f, indent=2)
 
 
 def load_state():
@@ -137,29 +107,6 @@ def load_state():
     except:
         pass
     return {}
-
-
-# Fetch configured names for outlets of all known PDUs and cache
-# them inside the configuration file.
-def update_state(pdus):
-    for pdu, params in pdus.items():
-        outlets = {}
-        outletnumber, = snmpnext(snmpget(pdu, params, ['outletnumber']))
-        gen = snmpget(pdu, params, ['outletName'])
-        for n in range(1, outletnumber + 1): 
-            name, = snmpnext(gen)
-            if name and name[0]:
-                outlets[str(name)] = n
-            else:
-                outlets[str(n)] = n
-        params['outlets'] = outlets
-
-    state = {
-        'format': 1,
-        'pdus': pdus,
-    }
-    save_state(state)
-    return state
 
 
 # Load connection parameters and and cached outlet names from file
@@ -194,7 +141,6 @@ for cmd, cmd_help in outlet_cmds.items():
 
 simple_cmds = {
     'list': 'List known outlets',
-    'update': 'Update state file in %s' % state_path(),
 }
 
 for cmd, help in simple_cmds.items():
@@ -202,43 +148,27 @@ for cmd, help in simple_cmds.items():
 
 args = ap.parse_args()
 
-# Name of selected PDU
-pdu = args.pdu
-
-# Connection parameters for selected PDU
-params = pdus.get(pdu)
-
-# Dictionary of outlets (name -> visible number)
-outlets = params.get('outlets', {})
-outlet_names = [*outlets.keys()]
+# Create the PDU controller object for the selected PDU
+ctrl = PduCtrl(args.pdu, pdus.get(args.pdu))
 
 if args.cmd == 'list':
-    for name, nr in params.get('outlets', {}).items():
-        print("%s: %s" % (nr, name))
-
-elif args.cmd == 'update':
-    update_state(pdus)
+    for outlet in ctrl.outlets:
+        print("%s: %s" % (outlet.id, outlet.name))
 
 elif args.cmd in outlet_cmds.keys():
-    if not args.outlet or 'ALL' in args.outlet:
-        names = outlet_names
-    else:
-        diff = set(args.outlet).difference(set(outlet_names))
+    if args.outlet and 'ALL' not in args.outlet:
+        diff = set(args.outlet).difference(set([outlet.name if outlet.name else str(outlet.id) for outlet in ctrl.outlets]))
         if diff:
             fatal("Invalid argument(s): %s" % diff)
-        names = args.outlet
-
-    ids = [outlets[name] for name in names]
-    attrs = ['outlet%dStatus' % nr for nr in ids]
-    states = snmpnext(snmpget(pdu, params, attrs))
+        outlets = [outlet for outlet in ctrl.outlets if outlet.name in args.outlet or str(outlet.id) in args.outlet]
+    else:
+        outlets = [*ctrl.outlets]
 
     if args.cmd == 'status':
-        for nr, name, state in zip(ids, names, states):
-            if str(nr) == name:
-              print('%s: %s' % (nr, state.getNamedValues().getName(state)))
+        for outlet, state in ctrl.queryOutlets(outlets):
+            if outlet.name:
+              print('%s [%s]: %s' % (outlet.id, outlet.name, state))
             else:
-              print('%s [%s]: %s' % (nr, name, state.getNamedValues().getName(state)))
+              print('%s: %s' % (outlet.id, state))
     else:
-        values = dict([(attr, state.getNamedValues().getValue(args.cmd)) for attr, state in zip(attrs, states) if state.getNamedValues().getName(state) != args.cmd])
-        if values:
-            snmpset(pdu, params, values)
+        ctrl.switchOutlets(outlets, args.cmd)
