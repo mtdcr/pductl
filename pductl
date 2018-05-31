@@ -104,8 +104,10 @@ def load_state():
             fmt = state.get('format')
             if fmt is not None and int(fmt) == 1:
                 return state
-    except:
+    except FileNotFoundError:
         pass
+    except Exception as e:
+        fatal("%s: %s" % (state_path(), e))
     return {}
 
 
@@ -113,7 +115,7 @@ def load_state():
 state = load_state()
 pdus = state.get('pdus', {})
 if not pdus:
-    fatal("No PDUs found! Please create or modify '%s' and check for JSON formatting errors." % state_path())
+    fatal("No PDUs found! Please create or modify '%s'." % state_path())
 
 
 # Build command-line parser and help texts
