@@ -7,7 +7,9 @@
 
 ## Installation:
 
-Copy `ATEN-PE-CFG.py` into `~/.pysnmp/mibs/`.
+```sh
+python3 setup.py install
+```
  
 ## Example configuration [~/.pductl]:
 ```json
@@ -31,19 +33,24 @@ Copy `ATEN-PE-CFG.py` into `~/.pysnmp/mibs/`.
       "username": "joe",
       "authkey": "EEEEEEEEEEEEEE",
       "privkey": "FFFFFFFFFFFFFF"
+    },
+    "pdu4": {
+      "community": "private"
+    },
+    "pdu5": {
     }
   }
 }
 ```
 
-* `authkey` and `privkey` are required.
+* `authkey` and `privkey` are required for SNMPv3. On absence, SNMPv2c gets used.
+* `community` defaults to `private` for SNMPv2c.
 * `node` defaults to PDU entry's name.
-* `service` defaults to `"snmp"`.
-* `username` defaults to `"administrator"`.
+* `service` defaults to `"snmp"`, i.e. port 161.
+* `username` defaults to `"administrator"` for SNMPv3.
 
 ## Usage:
 ```sh
-pductl update
 pductl [-p <PDU>] list
 pductl [-p <PDU>] <on|off|reboot|status> <OUTLET> [<OUTLET> ...]
 ```
