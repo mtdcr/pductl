@@ -168,9 +168,12 @@ elif args.cmd in outlet_cmds.keys():
 
     if args.cmd == 'status':
         for outlet, state in ctrl.queryOutlets(outlets):
+            line = '[%02d]' % outlet.id
             if outlet.name:
-              print('%s [%s]: %s' % (outlet.id, outlet.name, state))
-            else:
-              print('%s: %s' % (outlet.id, state))
+              line += ' ' + outlet.name
+            line += ': ' + state
+            if state == 'on':
+                line += ', consuming ' + ctrl.outletPower(outlet.id) + ' W'
+            print(line)
     else:
         ctrl.switchOutlets(outlets, args.cmd)
