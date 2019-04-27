@@ -121,7 +121,7 @@ if not pdus:
 # Build command-line parser and help texts
 ap = ArgumentParser()
 
-pdu_names = [*pdus.keys()]
+pdu_names = sorted([*pdus.keys()])
 ap.add_argument('-p', '--pdu', choices=pdu_names, default=pdu_names[0])
 
 sp = ap.add_subparsers(help='commands', dest='cmd')
