@@ -2,7 +2,7 @@
 #
 # pductl - Control outlets of ATEN PE PDUs (SNMP v2/v3)
 #
-# Copyright (c) 2018 Andreas Oberritter
+# Copyright (c) 2019 Andreas Oberritter
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -61,10 +61,12 @@
 # pductl [-p <PDU>] <on|off|reboot|status> <OUTLET> [<OUTLET> ...]
 #
 
+import asyncio
+import json
 from argparse import ArgumentParser, RawTextHelpFormatter
 from os import environ, path
 from sys import stderr
-import json
+
 from atenpdu import AtenPE
 
 
@@ -78,13 +80,13 @@ class PduCtrl(AtenPE):
         privkey = params.get('privkey')
         AtenPE.__init__(self, node=node, serv=serv, community=community, username=username, authkey=authkey, privkey=privkey)
 
-    def switchOutlets(self, outlets, state):
-        self._set(dict([('outlet%dStatus' % outlet.id, state) for outlet in outlets]), 0)
+    async def switchOutlets(self, outlets, state):
+        await self._set(dict([('outlet%dStatus' % outlet.id, state) for outlet in outlets]), 0)
 
-    def queryOutlets(self, outlets):
-        states = self._iterate(self._next(['outlet%dStatus' % outlet.id for outlet in outlets]))
-        for outlet, state in zip(outlets, states):
-            yield (outlet, state.getNamedValues().getName(state))
+    async def queryOutlets(self, outlets):
+        varbind_table = await self._get([('outlet%dStatus' % outlet.id, 0) for outlet in outlets])
+        for outlet, var_binds in zip(outlets, varbind_table):
+            yield (outlet, str(var_binds[1]))
 
 
 def fatal(msg):
@@ -150,30 +152,36 @@ for cmd, help in simple_cmds.items():
 
 args = ap.parse_args()
 
-# Create the PDU controller object for the selected PDU
-ctrl = PduCtrl(args.pdu, pdus.get(args.pdu))
+async def main(args):
+    # Create the PDU controller object for the selected PDU
+    ctrl = PduCtrl(args.pdu, pdus.get(args.pdu))
+    ctrl.loadMibs()
 
-if args.cmd == 'list':
-    for outlet in ctrl.outlets:
-        print("%s: %s" % (outlet.id, outlet.name))
+    if args.cmd == 'list':
+        async for outlet in ctrl.outlets():
+            print("%s: %s" % (outlet.id, outlet.name))
 
-elif args.cmd in outlet_cmds.keys():
-    if args.outlet and 'ALL' not in args.outlet:
-        diff = set(args.outlet).difference(set([outlet.name if outlet.name else str(outlet.id) for outlet in ctrl.outlets]))
-        if diff:
-            fatal("Invalid argument(s): %s" % diff)
-        outlets = [outlet for outlet in ctrl.outlets if outlet.name in args.outlet or str(outlet.id) in args.outlet]
-    else:
-        outlets = [*ctrl.outlets]
+    elif args.cmd in outlet_cmds.keys():
+        outlets = [outlet async for outlet in ctrl.outlets()]
 
-    if args.cmd == 'status':
-        for outlet, state in ctrl.queryOutlets(outlets):
-            line = '[%02d]' % outlet.id
-            if outlet.name:
-              line += ' ' + outlet.name
-            line += ': ' + state
-            if state == 'on':
-                line += ', consuming ' + ctrl.outletPower(outlet.id) + ' W'
-            print(line)
-    else:
-        ctrl.switchOutlets(outlets, args.cmd)
+        if args.outlet and 'ALL' not in args.outlet:
+            diff = set(args.outlet).difference(set([outlet.name if outlet.name else str(outlet.id) for outlet in outlets]))
+            if diff:
+                fatal("Invalid argument(s): %s" % diff)
+            outlets = [outlet for outlet in outlets if outlet.name in args.outlet or str(outlet.id) in args.outlet]
+
+        if args.cmd == 'status':
+            async for outlet, state in ctrl.queryOutlets(outlets):
+                line = '[%02d]' % outlet.id
+                if outlet.name:
+                  line += ' ' + outlet.name
+                line += ': ' + state
+                if state == 'on':
+                    line += ', consuming ' + await ctrl.outletPower(outlet.id) + ' W'
+                print(line)
+        else:
+            await ctrl.switchOutlets(outlets, args.cmd)
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(args))
