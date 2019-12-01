@@ -98,7 +98,7 @@ class AtenPE(object):
 
     async def _getAttribute(self, name, index=0):
         varbind_table = await self._get([(name, index)])
-        return varbind_table[0][1]
+        return varbind_table[-1][1]
 
     def _resolve(self, s):
         return str(s.getNamedValues().getName(s))
