@@ -27,6 +27,10 @@ from pysnmp.hlapi.asyncio import *
 from pysnmp.smi import builder, compiler
 
 
+class AtenPEError(Exception):
+    pass
+
+
 class AtenPE(object):
     _MIB_MODULE = 'ATEN-PE-CFG'
     _MIB_SRCURI = 'http://mibs.snmplabs.com/asn1/'
@@ -35,32 +39,28 @@ class AtenPE(object):
         self._prepareSnmpArgs(node, serv, community, username, authkey, privkey)
 
     def _prepareSnmpArgs(self, node, serv, community, username, authkey, privkey):
+        try:
+            transport = UdpTransportTarget((node, serv))
+        except PySnmpError as exc:
+            raise AtenPEError(str(exc))
+
         if authkey and privkey:
-            self._snmp_args = [
-                SnmpEngine(),
-                UsmUserData(
-                    username,
-                    authkey,
-                    privkey,
-                    authProtocol=usmHMACMD5AuthProtocol,
-                    privProtocol=usmAesCfb128Protocol,
-                ),
-                UdpTransportTarget((
-                    node,
-                    serv,
-                )),
-                ContextData()
-            ]
+            credentials = UsmUserData(
+                username,
+                authkey,
+                privkey,
+                authProtocol=usmHMACMD5AuthProtocol,
+                privProtocol=usmAesCfb128Protocol,
+            )
         else:
-             self._snmp_args = [
-                SnmpEngine(),
-                CommunityData(community),
-                UdpTransportTarget((
-                    node,
-                    serv,
-                )),
-                ContextData()
-            ]
+             credentials = CommunityData(community)
+
+        self._snmp_args = [
+            SnmpEngine(),
+            credentials,
+            transport,
+            ContextData()
+        ]
 
     def loadMibs(self):
         mibBuilder = builder.MibBuilder()
@@ -68,16 +68,24 @@ class AtenPE(object):
         mibBuilder.loadModules(self._MIB_MODULE)
 
     async def _set(self, objects_values, *args):
-        await setCmd(
+        err_indication, err_status, _, _ = await setCmd(
             *self._snmp_args,
             *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
         )
+        if err_indication:
+            raise AtenPEError(err_indication)
+        if err_status:
+            raise AtenPEError(err_status.prettyPrint())
 
     async def _get(self, objects):
-        _, _, _, varbind_table = await getCmd(
+        err_indication, err_status, _, varbind_table = await getCmd(
             *self._snmp_args,
             *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
         )
+        if err_indication:
+            raise AtenPEError(err_indication)
+        if err_status:
+            raise AtenPEError(err_status.prettyPrint())
         return varbind_table
 
     async def _nrOutlets(self):
