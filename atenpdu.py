@@ -132,3 +132,12 @@ class AtenPE(object):
 
     async def setOutletStatus(self, outlet, state):
         await self._set({ 'outlet%dStatus' % outlet: state }, 0)
+
+    async def modelName(self):
+        return str(await self._getAttribute('modelName'))
+
+    async def deviceFWversion(self):
+        return str(await self._getAttribute('deviceFWversion'))
+
+    async def deviceName(self):
+        return str(await self._getAttribute('deviceName'))
