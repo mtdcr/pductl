@@ -25,6 +25,7 @@ from collections import namedtuple
 
 from pysnmp.hlapi.asyncio import *
 from pysnmp.smi import builder, compiler
+from pysnmp.smi.error import MibNotFoundError
 
 
 class AtenPEError(Exception):
@@ -36,16 +37,10 @@ class AtenPE(object):
     _MIB_SRCURI = 'http://mibs.snmplabs.com/asn1/'
 
     def __init__(self, node, serv='snmp', community='private', username='administrator', authkey=None, privkey=None):
-        self._prepareSnmpArgs(node, serv, community, username, authkey, privkey)
-
-    def _prepareSnmpArgs(self, node, serv, community, username, authkey, privkey):
-        try:
-            transport = UdpTransportTarget((node, serv))
-        except PySnmpError as exc:
-            raise AtenPEError(str(exc))
-
+        self._addr = (node, serv)
+        self._snmp_engine = SnmpEngine()
         if authkey and privkey:
-            credentials = UsmUserData(
+            self._auth_data = UsmUserData(
                 username,
                 authkey,
                 privkey,
@@ -53,21 +48,33 @@ class AtenPE(object):
                 privProtocol=usmAesCfb128Protocol,
             )
         else:
-             credentials = CommunityData(community)
+             self._auth_data = CommunityData(community)
+        self._snmp_args = []
+
+    def initialize(self):
+        try:
+            transport_target = UdpTransportTarget(self._addr)
+        except PySnmpError as exc:
+            raise AtenPEError(str(exc))
 
         self._snmp_args = [
-            SnmpEngine(),
-            credentials,
-            transport,
+            self._snmp_engine,
+            self._auth_data,
+            transport_target,
             ContextData()
         ]
 
-    def loadMibs(self):
         mibBuilder = builder.MibBuilder()
         compiler.addMibCompiler(mibBuilder, sources=[self._MIB_SRCURI + '@mib@'])
-        mibBuilder.loadModules(self._MIB_MODULE)
+        try:
+            mibBuilder.loadModules(self._MIB_MODULE)
+        except MibNotFoundError as exc:
+            raise AtenPEError(str(exc))
 
     async def _set(self, objects_values, *args):
+        if not self._snmp_args:
+            raise AtenPEError('Method initialize() needs to be called first')
+
         err_indication, err_status, _, _ = await setCmd(
             *self._snmp_args,
             *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
@@ -78,6 +85,9 @@ class AtenPE(object):
             raise AtenPEError(err_status.prettyPrint())
 
     async def _get(self, objects):
+        if not self._snmp_args:
+            raise AtenPEError('Method initialize() needs to be called first')
+
         err_indication, err_status, _, varbind_table = await getCmd(
             *self._snmp_args,
             *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
