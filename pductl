@@ -145,6 +145,7 @@ for cmd, cmd_help in outlet_cmds.items():
 
 simple_cmds = {
     'list': 'List known outlets',
+    'info': 'Show information about the device',
 }
 
 for cmd, help in simple_cmds.items():
@@ -160,6 +161,12 @@ async def main(args):
     if args.cmd == 'list':
         async for outlet in ctrl.outlets():
             print("%s: %s" % (outlet.id, outlet.name))
+
+    elif args.cmd == 'info':
+        print("Name: %s" % await ctrl.deviceName())
+        print("Model: %s" % await ctrl.modelName())
+        print("Firmware: %s" % await ctrl.deviceFWversion())
+        print("MAC: %s" % await ctrl.deviceMAC())
 
     elif args.cmd in outlet_cmds.keys():
         outlets = [outlet async for outlet in ctrl.outlets()]
