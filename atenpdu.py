@@ -99,7 +99,7 @@ class AtenPE(object):
         return varbind_table
 
     async def _nrOutlets(self):
-        return await self._getAttribute('outletnumber')
+        return int(await self._getAttribute('outletnumber'))
 
     async def _outletIDs(self):
         return range(1, await self._nrOutlets() + 1)
