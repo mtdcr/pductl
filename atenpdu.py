@@ -34,7 +34,7 @@ class AtenPEError(Exception):
 
 class AtenPE(object):
     _MIB_MODULE = 'ATEN-PE-CFG'
-    _MIB_SRCURI = 'http://mibs.snmplabs.com/asn1/'
+    _MIB_SRCURI = 'http://mibs.thola.io/asn1/'
 
     def __init__(self, node, serv='snmp', community='private', username='administrator', authkey=None, privkey=None):
         self._addr = (node, serv)
@@ -65,7 +65,7 @@ class AtenPE(object):
         ]
 
         mibBuilder = builder.MibBuilder()
-        compiler.addMibCompiler(mibBuilder, sources=[self._MIB_SRCURI + '@mib@'])
+        compiler.addMibCompiler(mibBuilder, sources=[self._MIB_SRCURI])
         try:
             mibBuilder.loadModules(self._MIB_MODULE)
         except MibNotFoundError as exc:
