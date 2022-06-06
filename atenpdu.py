@@ -99,7 +99,7 @@ class AtenPE(object):
         return varbind_table
 
     async def _nrOutlets(self):
-        return int(await self._getAttribute('outletnumber'))
+        return int(await self.getAttribute('outletnumber'))
 
     async def _outletIDs(self):
         return range(1, await self._nrOutlets() + 1)
@@ -114,7 +114,7 @@ class AtenPE(object):
                 name = ''
             yield Outlet(n + 1, str(name))
 
-    async def _getAttribute(self, name, index=0):
+    async def getAttribute(self, name, index=0):
         varbind_table = await self._get([(name, index)])
         return varbind_table[-1][1]
 
@@ -122,22 +122,22 @@ class AtenPE(object):
         return str(s.getNamedValues().getName(s))
 
     async def deviceMAC(self):
-        return str(await self._getAttribute('deviceMAC'))
+        return str(await self.getAttribute('deviceMAC'))
 
     async def outletPower(self, outlet):
-        return str(await self._getAttribute('outletPower', outlet))
+        return str(await self.getAttribute('outletPower', outlet))
 
     async def displayOutletStatus(self, outlet):
-        return self._resolve(await self._getAttribute('displayOutletStatus', outlet))
+        return self._resolve(await self.getAttribute('displayOutletStatus', outlet))
 
     async def setOutletStatus(self, outlet, state):
         await self._set({ 'outlet%dStatus' % outlet: state }, 0)
 
     async def modelName(self):
-        return str(await self._getAttribute('modelName'))
+        return str(await self.getAttribute('modelName'))
 
     async def deviceFWversion(self):
-        return str(await self._getAttribute('deviceFWversion'))
+        return str(await self.getAttribute('deviceFWversion'))
 
     async def deviceName(self):
-        return str(await self._getAttribute('deviceName'))
+        return str(await self.getAttribute('deviceName'))
