@@ -39,6 +39,7 @@ class AtenPE(object):
     def __init__(self, node, serv='snmp', community='private', username='administrator', authkey=None, privkey=None):
         self._addr = (node, serv)
         self._snmp_engine = SnmpEngine()
+        self._lock = asyncio.Lock()
         if authkey and privkey:
             self._auth_data = UsmUserData(
                 username,
@@ -75,10 +76,12 @@ class AtenPE(object):
         if not self._snmp_args:
             raise AtenPEError('Method initialize() needs to be called first')
 
-        err_indication, err_status, _, _ = await setCmd(
-            *self._snmp_args,
-            *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
-        )
+        async with self._lock:
+            err_indication, err_status, _, _ = await setCmd(
+                *self._snmp_args,
+                *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
+            )
+
         if err_indication:
             raise AtenPEError(err_indication)
         if err_status:
@@ -88,10 +91,12 @@ class AtenPE(object):
         if not self._snmp_args:
             raise AtenPEError('Method initialize() needs to be called first')
 
-        err_indication, err_status, _, varbind_table = await getCmd(
-            *self._snmp_args,
-            *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
-        )
+        async with self._lock:
+            err_indication, err_status, _, varbind_table = await getCmd(
+                *self._snmp_args,
+                *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
+            )
+
         if err_indication:
             raise AtenPEError(err_indication)
         if err_status:
