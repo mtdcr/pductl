@@ -23,6 +23,7 @@
 import asyncio
 from collections import namedtuple
 
+import async_timeout
 from pysnmp.hlapi.asyncio import *
 from pysnmp.smi import builder, compiler
 from pysnmp.smi.error import MibNotFoundError
@@ -77,10 +78,17 @@ class AtenPE(object):
             raise AtenPEError('Method initialize() needs to be called first')
 
         async with self._lock:
-            err_indication, err_status, _, _ = await setCmd(
-                *self._snmp_args,
-                *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
-            )
+            for _ in range(3):
+                try:
+                    async with async_timeout.timeout(3):
+                        err_indication, err_status, _, _ = await setCmd(
+                            *self._snmp_args,
+                            *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
+                        )
+                except asyncio.exceptions.TimeoutError as exc:
+                    pass
+                else:
+                    break
 
         if err_indication:
             raise AtenPEError(err_indication)
@@ -92,10 +100,17 @@ class AtenPE(object):
             raise AtenPEError('Method initialize() needs to be called first')
 
         async with self._lock:
-            err_indication, err_status, _, varbind_table = await getCmd(
-                *self._snmp_args,
-                *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
-            )
+            for _ in range(3):
+                try:
+                    async with async_timeout.timeout(3):
+                        err_indication, err_status, _, varbind_table = await getCmd(
+                            *self._snmp_args,
+                            *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
+                        )
+                except asyncio.exceptions.TimeoutError as exc:
+                    pass
+                else:
+                    break
 
         if err_indication:
             raise AtenPEError(err_indication)
