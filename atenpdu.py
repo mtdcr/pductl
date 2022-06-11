@@ -35,7 +35,7 @@ class AtenPEError(Exception):
 
 class AtenPE(object):
     _MIB_MODULE = 'ATEN-PE-CFG'
-    _MIB_SRCURI = 'http://mibs.thola.io/asn1/'
+    _MIB_SRCURI = 'https://pysnmp.github.io/mibs/asn1/'
 
     def __init__(self, node, serv='snmp', community='private', username='administrator', authkey=None, privkey=None):
         self._addr = (node, serv)
