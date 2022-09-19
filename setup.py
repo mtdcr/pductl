@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setup(
   name='atenpdu',
-  version='0.3.4',
+  version='0.3.5',
   author='Andreas Oberritter',
   author_email='obi@saftware.de',
   url='https://github.com/mtdcr/pductl',
