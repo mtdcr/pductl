@@ -31,6 +31,7 @@ setup(
     'Topic :: Utilities',
   ],
   install_requires=[
+    'async-timeout>=4.0.2',
     'pysnmp>=4.3.2',
   ],
 )
