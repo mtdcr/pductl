@@ -89,6 +89,8 @@ class AtenPE(object):
                     pass
                 else:
                     break
+            else:
+                raise AtenPEError('Timeout')
 
         if err_indication:
             raise AtenPEError(err_indication)
@@ -111,6 +113,8 @@ class AtenPE(object):
                     pass
                 else:
                     break
+            else:
+                raise AtenPEError('Timeout')
 
         if err_indication:
             raise AtenPEError(err_indication)
