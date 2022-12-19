@@ -65,6 +65,9 @@ class AtenPE(object):
             self._auth_data = CommunityData(community)
         self._snmp_args = []
 
+    def close(self):
+        self._snmp_engine.transportDispatcher.closeDispatcher()
+
     def initialize(self):
         try:
             transport_target = UdpTransportTarget(self._addr)
