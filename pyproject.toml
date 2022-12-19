@@ -19,12 +19,17 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8.1"
 async-timeout = "^4.0.2"
 pysnmp = "^4.3.2"
 
 [tool.poetry.scripts]
 pductl = "atenpdu.pductl:run"
+
+[tool.poetry.group.dev.dependencies]
+bandit = "^1.7.4"
+mypy = "^0.991"
+flake8 = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]
