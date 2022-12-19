@@ -2,7 +2,7 @@
 #
 # pductl - Control outlets of ATEN PE PDUs (SNMP v2/v3)
 #
-# Copyright (c) 2019 Andreas Oberritter
+# Copyright (c) 2022 Andreas Oberritter
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
