@@ -24,7 +24,19 @@ import asyncio
 from collections import namedtuple
 
 import async_timeout
-from pysnmp.hlapi.asyncio import *
+from pysnmp.error import PySnmpError
+from pysnmp.hlapi.asyncio import (
+    CommunityData,
+    ContextData,
+    ObjectIdentity,
+    ObjectType,
+    SnmpEngine,
+    UdpTransportTarget,
+    UsmUserData,
+    usmAesCfb128Protocol,
+    usmHMACMD5AuthProtocol,
+)
+from pysnmp.hlapi.asyncio.cmdgen import getCmd, setCmd
 from pysnmp.smi import builder, compiler
 from pysnmp.smi.error import MibNotFoundError
 
