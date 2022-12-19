@@ -144,7 +144,7 @@ class AtenPE(object):
         return range(1, await self._nrOutlets() + 1)
 
     async def outlets(self):
-        Outlet = namedtuple('outlet', ['id', 'name'])
+        Outlet = namedtuple('Outlet', ['id', 'name'])
 
         varbind_table = await self._get([('outletName', n) for n in await self._outletIDs()])
         for n, var_binds in enumerate(varbind_table):
