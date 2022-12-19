@@ -1,17 +1,12 @@
 # pductl - Control outlets of ATEN PE PDUs
 
-## Requirements:
-
-* Python 3
-* PySNMP
-
-## Installation:
+## Installation
 
 ```sh
-python3 setup.py install
+pip install atenpdu
 ```
  
-## Example configuration [~/.pductl]:
+## Example configuration [~/.pductl]
 ```json
 {
   "format": 1,
@@ -49,8 +44,11 @@ python3 setup.py install
 * `service` defaults to `"snmp"`, i.e. port 161.
 * `username` defaults to `"administrator"` for SNMPv3.
 
-## Usage:
+## Usage
+
 ```sh
 pductl [-p <PDU>] list
 pductl [-p <PDU>] <on|off|reboot|status> <OUTLET> [<OUTLET> ...]
 ```
+
+Use `ALL` to select all outlets.
