@@ -41,8 +41,8 @@ pip install atenpdu
 * `authkey` and `privkey` are required for SNMPv3. On absence, SNMPv2c gets used.
 * `community` defaults to `private` for SNMPv2c.
 * `node` defaults to PDU entry's name.
-* `service` defaults to `"snmp"`, i.e. port 161.
-* `username` defaults to `"administrator"` for SNMPv3.
+* `service` defaults to `snmp`, i.e. port 161.
+* `username` defaults to `administrator` for SNMPv3.
 
 ## Usage
 
