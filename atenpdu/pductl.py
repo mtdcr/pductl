@@ -78,8 +78,7 @@ class PduCtrl(AtenPE):
         username = params.get("username", "administrator")
         authkey = params.get("authkey")
         privkey = params.get("privkey")
-        AtenPE.__init__(
-            self,
+        super().__init__(
             node=node,
             serv=serv,
             community=community,
