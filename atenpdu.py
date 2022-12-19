@@ -62,7 +62,7 @@ class AtenPE(object):
                 privProtocol=usmAesCfb128Protocol,
             )
         else:
-             self._auth_data = CommunityData(community)
+            self._auth_data = CommunityData(community)
         self._snmp_args = []
 
     def initialize(self):
