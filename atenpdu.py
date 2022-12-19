@@ -170,7 +170,7 @@ class AtenPE(object):
         return self._resolve(await self.getAttribute('displayOutletStatus', outlet))
 
     async def setOutletStatus(self, outlet, state):
-        await self._set({ 'outlet%dStatus' % outlet: state }, 0)
+        await self._set({'outlet%dStatus' % outlet: state}, 0)
 
     async def modelName(self):
         return str(await self.getAttribute('modelName'))
