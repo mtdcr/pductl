@@ -100,7 +100,7 @@ class AtenPE(object):
                             *self._snmp_args,
                             *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
                         )
-                except asyncio.exceptions.TimeoutError as exc:
+                except asyncio.exceptions.TimeoutError:
                     pass
                 else:
                     break
@@ -124,7 +124,7 @@ class AtenPE(object):
                             *self._snmp_args,
                             *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
                         )
-                except asyncio.exceptions.TimeoutError as exc:
+                except asyncio.exceptions.TimeoutError:
                     pass
                 else:
                     break
