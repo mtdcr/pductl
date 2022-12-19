@@ -149,7 +149,7 @@ simple_cmds = {
 }
 
 for cmd, help in simple_cmds.items():
-    p = sp.add_parser(cmd, help=help)
+    sp.add_parser(cmd, help=help)
 
 
 async def main(args):
