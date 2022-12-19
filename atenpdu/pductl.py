@@ -67,7 +67,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 from os import environ, path
 from sys import stderr
 
-from atenpdu import AtenPE
+from . import AtenPE
 
 
 class PduCtrl(AtenPE):
