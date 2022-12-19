@@ -63,8 +63,8 @@
 
 import asyncio
 import json
+import pathlib
 from argparse import ArgumentParser, RawTextHelpFormatter
-from os import environ, path
 from sys import stderr
 
 from . import AtenPE
@@ -102,8 +102,7 @@ def fatal(msg):
 
 
 def state_path():
-    home = environ.get("HOME", "")
-    return path.join(home, ".pductl")
+    return pathlib.Path.home() / ".pductl"
 
 
 def load_state():
