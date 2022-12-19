@@ -21,6 +21,7 @@
 #
 
 import asyncio
+import typing as t
 from collections import namedtuple
 
 import async_timeout
@@ -49,7 +50,7 @@ class AtenPE(object):
     _MIB_MODULE = 'ATEN-PE-CFG'
     _MIB_SRCURI = 'https://pysnmp.github.io/mibs/asn1/'
 
-    def __init__(self, node, serv='snmp', community='private', username='administrator', authkey=None, privkey=None):
+    def __init__(self, node: t.Union[bytes, str], serv: t.Union[bytes, str, int] = 'snmp', community: str = 'private', username: str = 'administrator', authkey: t.Optional[str] = None, privkey: t.Optional[str] = None) -> None:
         self._addr = (node, serv)
         self._snmp_engine = SnmpEngine()
         self._lock = asyncio.Lock()
@@ -63,12 +64,12 @@ class AtenPE(object):
             )
         else:
             self._auth_data = CommunityData(community)
-        self._snmp_args = []
+        self._snmp_args: t.List[t.Any] = []
 
-    def close(self):
+    def close(self) -> None:
         self._snmp_engine.transportDispatcher.closeDispatcher()
 
-    def initialize(self):
+    def initialize(self) -> None:
         try:
             transport_target = UdpTransportTarget(self._addr)
         except PySnmpError as exc:
@@ -112,7 +113,7 @@ class AtenPE(object):
         if err_status:
             raise AtenPEError(err_status.prettyPrint())
 
-    async def _get(self, objects):
+    async def _get(self, objects: t.Any) -> t.Any:
         if not self._snmp_args:
             raise AtenPEError('Method initialize() needs to be called first')
 
@@ -137,13 +138,13 @@ class AtenPE(object):
             raise AtenPEError(err_status.prettyPrint())
         return varbind_table
 
-    async def _nrOutlets(self):
+    async def _nrOutlets(self) -> int:
         return int(await self.getAttribute('outletnumber'))
 
-    async def _outletIDs(self):
+    async def _outletIDs(self) -> range:
         return range(1, await self._nrOutlets() + 1)
 
-    async def outlets(self):
+    async def outlets(self) -> t.AsyncGenerator:
         Outlet = namedtuple('Outlet', ['id', 'name'])
 
         varbind_table = await self._get([('outletName', n) for n in await self._outletIDs()])
@@ -153,30 +154,30 @@ class AtenPE(object):
                 name = ''
             yield Outlet(n + 1, str(name))
 
-    async def getAttribute(self, name, index=0):
+    async def getAttribute(self, name: str, index: int = 0) -> t.Any:
         varbind_table = await self._get([(name, index)])
         return varbind_table[-1][1]
 
-    def _resolve(self, s):
+    def _resolve(self, s: t.Any) -> str:
         return str(s.getNamedValues().getName(s))
 
-    async def deviceMAC(self):
+    async def deviceMAC(self) -> str:
         return str(await self.getAttribute('deviceMAC'))
 
-    async def outletPower(self, outlet):
+    async def outletPower(self, outlet: int) -> str:
         return str(await self.getAttribute('outletPower', outlet))
 
-    async def displayOutletStatus(self, outlet):
+    async def displayOutletStatus(self, outlet: int) -> str:
         return self._resolve(await self.getAttribute('displayOutletStatus', outlet))
 
-    async def setOutletStatus(self, outlet, state):
+    async def setOutletStatus(self, outlet: int, state: str) -> None:
         await self._set({'outlet%dStatus' % outlet: state}, 0)
 
-    async def modelName(self):
+    async def modelName(self) -> str:
         return str(await self.getAttribute('modelName'))
 
-    async def deviceFWversion(self):
+    async def deviceFWversion(self) -> str:
         return str(await self.getAttribute('deviceFWversion'))
 
-    async def deviceName(self):
+    async def deviceName(self) -> str:
         return str(await self.getAttribute('deviceName'))
