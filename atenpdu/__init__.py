@@ -23,6 +23,7 @@
 import asyncio
 import typing as t
 from collections import namedtuple
+from pathlib import Path
 
 import async_timeout
 from pysnmp.error import PySnmpError
@@ -38,8 +39,7 @@ from pysnmp.hlapi.asyncio import (
     usmHMACMD5AuthProtocol,
 )
 from pysnmp.hlapi.asyncio.cmdgen import getCmd, setCmd
-from pysnmp.smi import builder, compiler
-from pysnmp.smi.error import MibNotFoundError
+from pysnmp.smi import builder
 
 
 class AtenPEError(Exception):
@@ -48,7 +48,6 @@ class AtenPEError(Exception):
 
 class AtenPE(object):
     _MIB_MODULE = 'ATEN-PE-CFG'
-    _MIB_SRCURI = 'https://pysnmp.github.io/mibs/asn1/'
 
     def __init__(self, node: t.Union[bytes, str], serv: t.Union[bytes, str, int] = 'snmp', community: str = 'private', username: str = 'administrator', authkey: t.Optional[str] = None, privkey: t.Optional[str] = None) -> None:
         self._addr = (node, serv)
@@ -65,6 +64,7 @@ class AtenPE(object):
         else:
             self._auth_data = CommunityData(community)
         self._snmp_args: t.List[t.Any] = []
+        self._snmp_engine.getMibBuilder().addMibSources(builder.DirMibSource(Path(__file__).parent / "mibs"))
 
     def close(self) -> None:
         self._snmp_engine.transportDispatcher.closeDispatcher()
@@ -81,13 +81,6 @@ class AtenPE(object):
             transport_target,
             ContextData()
         ]
-
-        mibBuilder = builder.MibBuilder()
-        compiler.addMibCompiler(mibBuilder, sources=[self._MIB_SRCURI])
-        try:
-            mibBuilder.loadModules(self._MIB_MODULE)
-        except MibNotFoundError as exc:
-            raise AtenPEError(str(exc))
 
     async def _set(self, objects_values, *args):
         if not self._snmp_args:
