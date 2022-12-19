@@ -151,7 +151,6 @@ simple_cmds = {
 for cmd, help in simple_cmds.items():
     p = sp.add_parser(cmd, help=help)
 
-args = ap.parse_args()
 
 async def main(args):
     # Create the PDU controller object for the selected PDU
@@ -189,6 +188,10 @@ async def main(args):
         else:
             await ctrl.switchOutlets(outlets, args.cmd)
 
+
+def run():
+    asyncio.run(main(ap.parse_args()))
+
+
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(args))
+    run()
