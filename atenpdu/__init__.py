@@ -73,7 +73,7 @@ class AtenPE(object):
         try:
             transport_target = UdpTransportTarget(self._addr)
         except PySnmpError as exc:
-            raise AtenPEError(str(exc))
+            raise AtenPEError(*exc.args) from exc
 
         self._snmp_args = [
             self._snmp_engine,
