@@ -72,19 +72,27 @@ from atenpdu import AtenPE
 
 class PduCtrl(AtenPE):
     def __init__(self, name, params):
-        node = params.get('node', name)
-        serv = params.get('service', 'snmp')
-        community = params.get('community', 'private')
-        username = params.get('username', 'administrator')
-        authkey = params.get('authkey')
-        privkey = params.get('privkey')
-        AtenPE.__init__(self, node=node, serv=serv, community=community, username=username, authkey=authkey, privkey=privkey)
+        node = params.get("node", name)
+        serv = params.get("service", "snmp")
+        community = params.get("community", "private")
+        username = params.get("username", "administrator")
+        authkey = params.get("authkey")
+        privkey = params.get("privkey")
+        AtenPE.__init__(
+            self,
+            node=node,
+            serv=serv,
+            community=community,
+            username=username,
+            authkey=authkey,
+            privkey=privkey,
+        )
 
     async def switchOutlets(self, outlets, state):
-        await self._set(dict([('outlet%dStatus' % outlet.id, state) for outlet in outlets]), 0)
+        await self._set(dict([("outlet%dStatus" % outlet.id, state) for outlet in outlets]), 0)
 
     async def queryOutlets(self, outlets):
-        varbind_table = await self._get([('outlet%dStatus' % outlet.id, 0) for outlet in outlets])
+        varbind_table = await self._get([("outlet%dStatus" % outlet.id, 0) for outlet in outlets])
         for outlet, var_binds in zip(outlets, varbind_table):
             yield (outlet, str(var_binds[1]))
 
@@ -95,15 +103,15 @@ def fatal(msg):
 
 
 def state_path():
-    home = environ.get('HOME', '')
-    return path.join(home, '.pductl')
+    home = environ.get("HOME", "")
+    return path.join(home, ".pductl")
 
 
 def load_state():
     try:
-        with open(state_path(), 'r') as f:
+        with open(state_path(), "r") as f:
             state = json.load(f)
-            fmt = state.get('format')
+            fmt = state.get("format")
             if fmt is not None and int(fmt) == 1:
                 return state
     except FileNotFoundError:
@@ -115,7 +123,7 @@ def load_state():
 
 # Load connection parameters and and cached outlet names from file
 state = load_state()
-pdus = state.get('pdus', {})
+pdus = state.get("pdus", {})
 if not pdus:
     fatal("No PDUs found! Please create or modify '%s'." % state_path())
 
@@ -124,28 +132,28 @@ if not pdus:
 ap = ArgumentParser()
 
 pdu_names = sorted([*pdus.keys()])
-ap.add_argument('-p', '--pdu', choices=pdu_names, default=pdu_names[0])
+ap.add_argument("-p", "--pdu", choices=pdu_names, default=pdu_names[0])
 
-sp = ap.add_subparsers(help='commands', dest='cmd')
+sp = ap.add_subparsers(help="commands", dest="cmd")
 
 outlet_cmds = {
-    'status': 'Get current state of outlet(s)',
-    'off': 'Turn off outlet(s)',
-    'on': 'Turn on outlet(s)',
-    'reboot': 'Reboot outlet(s)',
+    "status": "Get current state of outlet(s)",
+    "off": "Turn off outlet(s)",
+    "on": "Turn on outlet(s)",
+    "reboot": "Reboot outlet(s)",
 }
 
-outlets_help = ''
+outlets_help = ""
 for k, v in pdus.items():
-    outlets_help += 'Outlets for %s: {' % k + ','.join(v.get('outlets', [])) + '}\n'
+    outlets_help += "Outlets for %s: {" % k + ",".join(v.get("outlets", [])) + "}\n"
 
 for cmd, cmd_help in outlet_cmds.items():
     p = sp.add_parser(cmd, formatter_class=RawTextHelpFormatter, help=cmd_help)
-    p.add_argument('outlet', nargs='+', help=outlets_help, metavar='OUTLET')
+    p.add_argument("outlet", nargs="+", help=outlets_help, metavar="OUTLET")
 
 simple_cmds = {
-    'list': 'List known outlets',
-    'info': 'Show information about the device',
+    "list": "List known outlets",
+    "info": "Show information about the device",
 }
 
 for cmd, help in simple_cmds.items():
@@ -157,11 +165,11 @@ async def main(args):
     ctrl = PduCtrl(args.pdu, pdus.get(args.pdu))
     ctrl.initialize()
 
-    if args.cmd == 'list':
+    if args.cmd == "list":
         async for outlet in ctrl.outlets():
             print("%s: %s" % (outlet.id, outlet.name))
 
-    elif args.cmd == 'info':
+    elif args.cmd == "info":
         print("Name: %s" % await ctrl.deviceName())
         print("Model: %s" % await ctrl.modelName())
         print("Firmware: %s" % await ctrl.deviceFWversion())
@@ -170,20 +178,22 @@ async def main(args):
     elif args.cmd in outlet_cmds.keys():
         outlets = [outlet async for outlet in ctrl.outlets()]
 
-        if args.outlet and 'ALL' not in args.outlet:
-            diff = set(args.outlet).difference(set([outlet.name if outlet.name else str(outlet.id) for outlet in outlets]))
+        if args.outlet and "ALL" not in args.outlet:
+            diff = set(args.outlet).difference(
+                set([outlet.name if outlet.name else str(outlet.id) for outlet in outlets])
+            )
             if diff:
                 fatal("Invalid argument(s): %s" % diff)
             outlets = [outlet for outlet in outlets if outlet.name in args.outlet or str(outlet.id) in args.outlet]
 
-        if args.cmd == 'status':
+        if args.cmd == "status":
             async for outlet, state in ctrl.queryOutlets(outlets):
-                line = '[%02d]' % outlet.id
+                line = "[%02d]" % outlet.id
                 if outlet.name:
-                  line += ' ' + outlet.name
-                line += ': ' + state
-                if state == 'on':
-                    line += ', consuming ' + await ctrl.outletPower(outlet.id) + ' W'
+                    line += " " + outlet.name
+                line += ": " + state
+                if state == "on":
+                    line += ", consuming " + await ctrl.outletPower(outlet.id) + " W"
                 print(line)
         else:
             await ctrl.switchOutlets(outlets, args.cmd)
@@ -193,5 +203,5 @@ def run():
     asyncio.run(main(ap.parse_args()))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

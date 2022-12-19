@@ -47,9 +47,17 @@ class AtenPEError(Exception):
 
 
 class AtenPE(object):
-    _MIB_MODULE = 'ATEN-PE-CFG'
+    _MIB_MODULE = "ATEN-PE-CFG"
 
-    def __init__(self, node: t.Union[bytes, str], serv: t.Union[bytes, str, int] = 'snmp', community: str = 'private', username: str = 'administrator', authkey: t.Optional[str] = None, privkey: t.Optional[str] = None) -> None:
+    def __init__(
+        self,
+        node: t.Union[bytes, str],
+        serv: t.Union[bytes, str, int] = "snmp",
+        community: str = "private",
+        username: str = "administrator",
+        authkey: t.Optional[str] = None,
+        privkey: t.Optional[str] = None,
+    ) -> None:
         self._addr = (node, serv)
         self._snmp_engine = SnmpEngine()
         self._lock = asyncio.Lock()
@@ -79,12 +87,12 @@ class AtenPE(object):
             self._snmp_engine,
             self._auth_data,
             transport_target,
-            ContextData()
+            ContextData(),
         ]
 
     async def _set(self, objects_values, *args):
         if not self._snmp_args:
-            raise AtenPEError('Method initialize() needs to be called first')
+            raise AtenPEError("Method initialize() needs to be called first")
 
         async with self._lock:
             for _ in range(3):
@@ -92,14 +100,17 @@ class AtenPE(object):
                     async with async_timeout.timeout(3):
                         err_indication, err_status, _, _ = await setCmd(
                             *self._snmp_args,
-                            *[ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value) for obj, value in objects_values.items()]
+                            *[
+                                ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value)
+                                for obj, value in objects_values.items()
+                            ],
                         )
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
                     break
             else:
-                raise AtenPEError('Timeout')
+                raise AtenPEError("Timeout")
 
         if err_indication:
             raise AtenPEError(err_indication)
@@ -108,22 +119,21 @@ class AtenPE(object):
 
     async def _get(self, objects: t.Any) -> t.Any:
         if not self._snmp_args:
-            raise AtenPEError('Method initialize() needs to be called first')
+            raise AtenPEError("Method initialize() needs to be called first")
 
         async with self._lock:
             for _ in range(3):
                 try:
                     async with async_timeout.timeout(3):
                         err_indication, err_status, _, varbind_table = await getCmd(
-                            *self._snmp_args,
-                            *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
+                            *self._snmp_args, *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
                         )
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
                     break
             else:
-                raise AtenPEError('Timeout')
+                raise AtenPEError("Timeout")
 
         if err_indication:
             raise AtenPEError(err_indication)
@@ -132,19 +142,19 @@ class AtenPE(object):
         return varbind_table
 
     async def _nrOutlets(self) -> int:
-        return int(await self.getAttribute('outletnumber'))
+        return int(await self.getAttribute("outletnumber"))
 
     async def _outletIDs(self) -> range:
         return range(1, await self._nrOutlets() + 1)
 
     async def outlets(self) -> t.AsyncGenerator:
-        Outlet = namedtuple('Outlet', ['id', 'name'])
+        Outlet = namedtuple("Outlet", ["id", "name"])
 
-        varbind_table = await self._get([('outletName', n) for n in await self._outletIDs()])
+        varbind_table = await self._get([("outletName", n) for n in await self._outletIDs()])
         for n, var_binds in enumerate(varbind_table):
             name = var_binds[1]
             if not (name and name[0]):
-                name = ''
+                name = ""
             yield Outlet(n + 1, str(name))
 
     async def getAttribute(self, name: str, index: int = 0) -> t.Any:
@@ -155,22 +165,22 @@ class AtenPE(object):
         return str(s.getNamedValues().getName(s))
 
     async def deviceMAC(self) -> str:
-        return str(await self.getAttribute('deviceMAC'))
+        return str(await self.getAttribute("deviceMAC"))
 
     async def outletPower(self, outlet: int) -> str:
-        return str(await self.getAttribute('outletPower', outlet))
+        return str(await self.getAttribute("outletPower", outlet))
 
     async def displayOutletStatus(self, outlet: int) -> str:
-        return self._resolve(await self.getAttribute('displayOutletStatus', outlet))
+        return self._resolve(await self.getAttribute("displayOutletStatus", outlet))
 
     async def setOutletStatus(self, outlet: int, state: str) -> None:
-        await self._set({'outlet%dStatus' % outlet: state}, 0)
+        await self._set({"outlet%dStatus" % outlet: state}, 0)
 
     async def modelName(self) -> str:
-        return str(await self.getAttribute('modelName'))
+        return str(await self.getAttribute("modelName"))
 
     async def deviceFWversion(self) -> str:
-        return str(await self.getAttribute('deviceFWversion'))
+        return str(await self.getAttribute("deviceFWversion"))
 
     async def deviceName(self) -> str:
-        return str(await self.getAttribute('deviceName'))
+        return str(await self.getAttribute("deviceName"))

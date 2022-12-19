@@ -1,3 +1,10 @@
+[tool.black]
+line-length = 120
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+
 [tool.poetry]
 name = "atenpdu"
 version = "0.3.6"
