@@ -98,13 +98,14 @@ class AtenPE(object):
             for _ in range(3):
                 try:
                     async with async_timeout.timeout(3):
-                        err_indication, err_status, _, _ = await setCmd(
+                        set_result = await setCmd(
                             *self._snmp_args,
                             *[
                                 ObjectType(ObjectIdentity(self._MIB_MODULE, obj, *args), value)
                                 for obj, value in objects_values.items()
                             ],
                         )
+                        err_indication, err_status, _, _ = await set_result
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
@@ -125,9 +126,10 @@ class AtenPE(object):
             for _ in range(3):
                 try:
                     async with async_timeout.timeout(3):
-                        err_indication, err_status, _, varbind_table = await getCmd(
+                        get_result = await getCmd(
                             *self._snmp_args, *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
                         )
+                        err_indication, err_status, _, varbind_table = await get_result
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
