@@ -405,14 +405,14 @@ requests = ">=2.26.0,<3.0.0"
 
 [[package]]
 name = "pysnmplib"
-version = "5.0.20"
+version = "5.0.21"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "pysnmplib-5.0.20-py3-none-any.whl", hash = "sha256:551ed269914496119e41aa38d743e9b119865d4d387a25ee304e834e0020a36e"},
-    {file = "pysnmplib-5.0.20.tar.gz", hash = "sha256:3641daf67abf963aaf8e4dd6e10343899a563d65b4d6c42419af424e93d1aca5"},
+    {file = "pysnmplib-5.0.21-py3-none-any.whl", hash = "sha256:f053c935db66f68807a7fe67e8367ddd8a06dacc1cddd2ef90a0bc86d7966e4b"},
+    {file = "pysnmplib-5.0.21.tar.gz", hash = "sha256:4fd3cfd47ab33c7b633996e28cd1486c04effcf9fc11621fb186eacc48a6134d"},
 ]
 
 [package.dependencies]
@@ -563,4 +563,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "8ba1fe10546b52233263f807e5a6e64f2d06da8b801413c7b6846d3e5eace23b"
+content-hash = "64013d88a6ae32d24b2f3ca2ea281583efa5c683b4bb04b3fe62f16bce5e37fe"

@@ -129,7 +129,7 @@ class AtenPE(object):
                         get_result = await getCmd(
                             *self._snmp_args, *[ObjectType(ObjectIdentity(self._MIB_MODULE, *obj)) for obj in objects]
                         )
-                        err_indication, err_status, _, varbind_table = await get_result
+                        err_indication, err_status, _, varbind_table = get_result
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
