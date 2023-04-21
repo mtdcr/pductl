@@ -7,7 +7,7 @@ profile = "black"
 
 [tool.poetry]
 name = "atenpdu"
-version = "0.5.0"
+version = "0.6.0"
 description = "Interface for ATEN-PE PDUs"
 authors = ["Andreas Oberritter <obi@saftware.de>"]
 license = "MIT"
