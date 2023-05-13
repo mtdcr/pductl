@@ -105,7 +105,7 @@ class AtenPE(object):
                                 for obj, value in objects_values.items()
                             ],
                         )
-                        err_indication, err_status, _, _ = await set_result
+                        err_indication, err_status, _, _ = set_result
                 except asyncio.exceptions.TimeoutError:
                     pass
                 else:
