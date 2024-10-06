@@ -28,7 +28,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.8.1"
 async-timeout = "^4.0.2"
-pysnmp-lextudio = "^6.0.11"
+pysnmp = "^6.2.5"
 
 [tool.poetry.scripts]
 pductl = "atenpdu.pductl:run"
