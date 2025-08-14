@@ -161,7 +161,7 @@ for cmd, help in simple_cmds.items():
 async def main(args):
     # Create the PDU controller object for the selected PDU
     ctrl = PduCtrl(args.pdu, pdus.get(args.pdu))
-    ctrl.initialize()
+    await ctrl.initialize()
 
     if args.cmd == "list":
         async for outlet in ctrl.outlets():

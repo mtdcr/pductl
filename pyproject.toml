@@ -26,9 +26,10 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
-async-timeout = "^4.0.2"
-pysnmp = "^6.2.5"
+python = "^3.9.2"
+async-timeout = "^4.0.3"
+pysnmp = "^7.1.21"
+cryptography = "^45.0.3"
 
 [tool.poetry.scripts]
 pductl = "atenpdu.pductl:run"

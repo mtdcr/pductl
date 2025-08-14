@@ -38,7 +38,7 @@ from pysnmp.hlapi.asyncio import (
     usmAesCfb128Protocol,
     usmHMACMD5AuthProtocol,
 )
-from pysnmp.hlapi.asyncio.cmdgen import getCmd, setCmd
+from pysnmp.hlapi.v3arch.asyncio.cmdgen import getCmd, setCmd
 from pysnmp.smi import builder
 
 
@@ -51,8 +51,8 @@ class AtenPE(object):
 
     def __init__(
         self,
-        node: t.Union[bytes, str],
-        serv: t.Union[bytes, str, int] = "snmp",
+        node: str,
+        serv: int = 161,
         community: str = "private",
         username: str = "administrator",
         authkey: t.Optional[str] = None,
@@ -72,14 +72,14 @@ class AtenPE(object):
         else:
             self._auth_data = CommunityData(community)
         self._snmp_args: t.List[t.Any] = []
-        self._snmp_engine.getMibBuilder().addMibSources(builder.DirMibSource(Path(__file__).parent / "mibs"))
+        self._snmp_engine.get_mib_builder().addMibSources(builder.DirMibSource(Path(__file__).parent / "mibs"))
 
     def close(self) -> None:
         self._snmp_engine.transportDispatcher.closeDispatcher()
 
-    def initialize(self) -> None:
+    async def initialize(self) -> None:
         try:
-            transport_target = UdpTransportTarget(self._addr)
+            transport_target = await UdpTransportTarget.create(self._addr)
         except PySnmpError as exc:
             raise AtenPEError(*exc.args) from exc
 
