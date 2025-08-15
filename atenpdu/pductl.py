@@ -65,6 +65,7 @@ import asyncio
 import json
 import pathlib
 from argparse import ArgumentParser, RawTextHelpFormatter
+from socket import getservbyname
 from sys import stderr
 
 from . import AtenPE
@@ -78,9 +79,15 @@ class PduCtrl(AtenPE):
         username = params.get("username", "administrator")
         authkey = params.get("authkey")
         privkey = params.get("privkey")
+
+        try:
+            port = getservbyname(serv, "udp")
+        except OSError:
+            port = int(serv)
+
         super().__init__(
             node=node,
-            serv=serv,
+            serv=port,
             community=community,
             username=username,
             authkey=authkey,
