@@ -7,7 +7,7 @@ profile = "black"
 
 [project]
 name = "atenpdu"
-version = "0.7.1"
+version = "0.7.2"
 description = "Interface for ATEN-PE PDUs"
 authors = [
     {name = "Andreas Oberritter", email = "obi@saftware.de"}
